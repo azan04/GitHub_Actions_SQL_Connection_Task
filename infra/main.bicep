@@ -1,4 +1,4 @@
-param location string = resourceGroup().location
+param location string = 'centralindia'
 param sqlLocation string = location
 param prefix string = 'azan'
 param sqlAdminLogin string = 'sqladminuser'
