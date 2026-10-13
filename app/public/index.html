@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Directory</title>
+<style>
+:root{
+  --bg:#f3f5fb; --card:#fff; --text:#1b2133; --muted:#6b7490; --line:#e7eaf3;
+  --primary:#4f46e5; --primary-d:#4338ca; --danger:#e11d48; --ok:#059669;
+  --shadow:0 10px 30px rgba(31,41,90,.08); --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1120; --card:#171b30; --text:#e8ebf8; --muted:#8d95b5; --line:#262b46; --shadow:0 10px 30px rgba(0,0,0,.45);}
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+.hero{background:linear-gradient(135deg,#4f46e5,#7c3aed 55%,#db2777);color:#fff;padding:2.2rem 1rem 5.5rem}
+.wrap{max-width:980px;margin:0 auto;padding:0 1rem}
+.hero .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.hero h1{margin:0;font-size:1.8rem;letter-spacing:-.02em}
+.hero p{margin:.2rem 0 0;opacity:.85}
+.pill{display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);padding:.4rem .85rem;border-radius:999px;font-size:.85rem}
+.dot{width:9px;height:9px;border-radius:50%;background:#fbbf24}
+.dot.ok{background:#34d399;box-shadow:0 0 0 4px rgba(52,211,153,.25)}
+.dot.err{background:#f87171;box-shadow:0 0 0 4px rgba(248,113,113,.25)}
+main{margin-top:-3.5rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1rem}
+.stat{background:var(--card);border-radius:var(--radius);padding:1rem 1.2rem;box-shadow:var(--shadow)}
+.stat small{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.7rem}
+.stat b{display:block;font-size:1.7rem;margin-top:.1rem}
+.panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.toolbar{display:flex;gap:.75rem;padding:1rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.search{flex:1;min-width:200px;position:relative}
+.search input{width:100%;padding:.65rem .9rem .65rem 2.3rem}
+.search svg{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted)}
+input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.65rem .9rem;outline:none;transition:.15s}
+input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.2)}
+.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:.65rem 1.1rem;cursor:pointer;transition:.15s;color:#fff;background:var(--primary)}
+.btn:hover{background:var(--primary-d);transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--bg)}
+.btn.danger{background:var(--danger)}
+.btn.sm{padding:.35rem .7rem;font-size:.85rem}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:.8rem 1rem;background:var(--bg)}
+td{padding:.8rem 1rem;border-top:1px solid var(--line);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:rgba(79,70,229,.05)}
+td.id{color:var(--muted);font-variant-numeric:tabular-nums;width:70px}
+td.actions{text-align:right;white-space:nowrap}
+.person{display:flex;align-items:center;gap:.75rem;font-weight:600}
+.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:.8rem;font-weight:700;flex:none}
+.empty{padding:3rem 1rem;text-align:center;color:var(--muted)}
+.empty .big{font-size:2.4rem}
+.skeleton td div{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--bg),var(--line));background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+dialog{border:0;border-radius:var(--radius);padding:0;width:min(440px,92vw);background:var(--card);color:var(--text);box-shadow:0 25px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,12,30,.55);backdrop-filter:blur(3px)}
+dialog form{padding:1.5rem}
+dialog h2{margin:0 0 1rem}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:.8rem 0 .3rem}
+dialog input{width:100%}
+.err-text{color:var(--danger);font-size:.85rem;min-height:1.2em;margin-top:.6rem}
+.modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem}
+#toasts{position:fixed;right:1rem;bottom:1rem;display:flex;flex-direction:column;gap:.5rem;z-index:50}
+.toast{background:var(--card);border-left:4px solid var(--ok);padding:.75rem 1rem;border-radius:10px;box-shadow:var(--shadow);animation:in .25s}
+.toast.err{border-color:var(--danger)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+footer{text-align:center;color:var(--muted);font-size:.8rem;padding:1.5rem}
+@media(max-width:600px){.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <h1>User Directory</h1>
+      <p>Azure App Service · Azure SQL · deployed with GitHub Actions &amp; Bicep</p>
+    </div>
+    <span class="pill"><span class="dot" id="dot"></span><span id="dbstatus">Checking database…</span></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats">
+    <div class="stat"><small>Total users</small><b id="total">–</b></div>
+    <div class="stat"><small>Showing</small><b id="shown">–</b></div>
+    <div class="stat"><small>Latest ID</small><b id="latest">–</b></div>
+  </section>
+
+  <section class="panel">
+    <div class="toolbar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="search" placeholder="Search by name or email…">
+      </div>
+      <button class="btn" id="addBtn">+ Add user</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th class="hide-sm">Email</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden><div class="big">📭</div><p>No users found. Click <b>Add user</b> to create one.</p></div>
+  </section>
+</main>
+<footer>Demo application · data stored in Azure SQL Database</footer>
+
+<dialog id="formDlg">
+  <form method="dialog" id="form">
+    <h2 id="formTitle">Add user</h2>
+    <label for="name">Full name</label>
+    <input id="name" maxlength="100" placeholder="Jane Doe" required>
+    <label for="email">Email</label>
+    <input id="email" type="email" maxlength="255" placeholder="jane@example.com" required>
+    <div class="err-text" id="formErr"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="cancel">Cancel</button>
+      <button type="submit" class="btn" id="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="delDlg">
+  <form method="dialog">
+    <h2>Delete user?</h2>
+    <p id="delText" style="color:var(--muted)"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="delCancel">Cancel</button>
+      <button type="button" class="btn danger" id="delOk">Delete</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let users = [], editId = null, delId = null;
+
+async function api(url, method = 'GET', body) {
+  const r = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.status === 204 ? null : r.json();
+}
+
+function toast(msg, type = '') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type; t.textContent = msg;
+  $('#toasts').append(t); setTimeout(() => t.remove(), 3200);
+}
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const initials = n => n.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+function td(text, cls) { const e = document.createElement('td'); if (cls) e.className = cls; e.textContent = text; return e; }
+
+function skeleton() {
+  $('#rows').replaceChildren(...Array.from({ length: 4 }, () => {
+    const tr = document.createElement('tr'); tr.className = 'skeleton';
+    tr.innerHTML = '<td><div></div></td>'.repeat(4); return tr;
+  }));
+}
+
+function render() {
+  const q = $('#search').value.trim().toLowerCase();
+  const list = users.filter(u => u.Name.toLowerCase().includes(q) || u.Email.toLowerCase().includes(q));
+  $('#total').textContent = users.length;
+  $('#shown').textContent = list.length;
+  $('#latest').textContent = users.length ? '#' + Math.max(...users.map(u => u.Id)) : '–';
+  $('#empty').hidden = list.length > 0;
+
+  $('#rows').replaceChildren(...list.map(u => {
+    const tr = document.createElement('tr');
+    const nameTd = document.createElement('td');
+    const person = document.createElement('div'); person.className = 'person';
+    const av = document.createElement('span'); av.className = 'avatar';
+    av.textContent = initials(u.Name); av.style.background = `hsl(${hue(u.Name)} 65% 48%)`;
+    const nm = document.createElement('span'); nm.textContent = u.Name;
+    person.append(av, nm); nameTd.append(person);
+
+    const act = document.createElement('td'); act.className = 'actions';
+    const eb = document.createElement('button'); eb.className = 'btn ghost sm'; eb.textContent = 'Edit';
+    eb.onclick = () => openForm(u);
+    const db = document.createElement('button'); db.className = 'btn danger sm'; db.textContent = 'Delete';
+    db.onclick = () => openDelete(u);
+    act.append(eb, ' ', db);
+
+    tr.append(td('#' + u.Id, 'id'), nameTd, td(u.Email, 'hide-sm'), act);
+    return tr;
+  }));
+}
+
+async function load() {
+  skeleton();
+  try { users = await api('/api/users'); render(); }
+  catch (e) { $('#rows').replaceChildren(); toast(e.message, 'err'); }
+}
+
+async function checkHealth() {
+  try {
+    await api('/health');
+    $('#dot').className = 'dot ok'; $('#dbstatus').textContent = 'Azure SQL connected';
+  } catch {
+    $('#dot').className = 'dot err'; $('#dbstatus').textContent = 'Database unreachable';
+  }
+}
+
+function openForm(u) {
+  editId = u ? u.Id : null;
+  $('#formTitle').textContent = u ? 'Edit user' : 'Add user';
+  $('#name').value = u ? u.Name : ''; $('#email').value = u ? u.Email : '';
+  $('#formErr').textContent = '';
+  $('#formDlg').showModal(); $('#name').focus();
+}
+function openDelete(u) {
+  delId = u.Id;
+  $('#delText').textContent = `This will permanently remove ${u.Name} (${u.Email}).`;
+  $('#delDlg').showModal();
+}
+
+$('#addBtn').onclick = () => openForm();
+$('#cancel').onclick = () => $('#formDlg').close();
+$('#delCancel').onclick = () => $('#delDlg').close();
+$('#search').oninput = render;
+
+$('#form').onsubmit = async e => {
+  e.preventDefault();
+  const body = { name: $('#name').value, email: $('#email').value };
+  try {
+    if (editId) { await api('/api/users/' + editId, 'PUT', body); toast('User updated'); }
+    else { await api('/api/users', 'POST', body); toast('User added'); }
+    $('#formDlg').close(); load();
+  } catch (err) { $('#formErr').textContent = err.message; }
+};
+
+$('#delOk').onclick = async () => {
+  try { await api('/api/users/' + delId, 'DELETE'); toast('User deleted'); }
+  catch (err) { toast(err.message, 'err'); }
+  $('#delDlg').close(); load();
+};
+
+checkHealth(); load();
+</script>
+</body>
+</html>
