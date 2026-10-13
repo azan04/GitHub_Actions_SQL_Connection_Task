@@ -6,7 +6,7 @@ param sqlAdminLogin string = 'sqladminuser'
 param sqlAdminPassword string
 
 var suffix = uniqueString(resourceGroup().id)
-var sqlServerName = '${prefix}-sql-${suffix}'
+var sqlServerName = '${prefix}-sql-${uniqueString(resourceGroup().id, sqlLocation)}'
 var dbName = '${prefix}-db'
 var planName = '${prefix}-plan'
 var webAppName = '${prefix}-web-${suffix}'
