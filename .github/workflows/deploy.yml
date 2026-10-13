@@ -1,0 +1,90 @@
+name: Deploy WebApp + SQL
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RG: rg-webapp-sql-Azan
+
+jobs:
+  # ---------- Stage 1: Create Resources ----------
+  infra:
+    runs-on: ubuntu-latest
+    outputs:
+      sqlServerFqdn: ${{ steps.deploy.outputs.sqlServerFqdn }}
+      dbName: ${{ steps.deploy.outputs.dbName }}
+      webAppName: ${{ steps.deploy.outputs.webAppName }}
+      webAppUrl: ${{ steps.deploy.outputs.webAppUrl }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy Bicep
+        id: deploy
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.RG }}
+          template: infra/main.bicep
+          parameters: sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+          failOnStdErr: false
+
+  # ---------- Stage 2: Get Connection String ----------
+  connection-string:
+    needs: infra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build connection string and set App Setting
+        run: |
+          CONN="Server=tcp:${{ needs.infra.outputs.sqlServerFqdn }},1433;Database=${{ needs.infra.outputs.dbName }};User Id=sqladminuser;Password=${{ secrets.SQL_ADMIN_PASSWORD }};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;"
+          echo "::add-mask::$CONN"
+          az webapp config appsettings set \
+            -g ${{ env.RG }} -n ${{ needs.infra.outputs.webAppName }} \
+            --settings SQL_CONNECTION_STRING="$CONN" \
+            --output none
+
+  # ---------- Stage 3: Deploy Application + Test ----------
+  deploy-app:
+    needs: [infra, connection-string]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install prod deps
+        working-directory: app
+        run: npm install --omit=dev
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ needs.infra.outputs.webAppName }}
+          package: app
+
+      - name: Smoke test (DB round-trip)
+        run: |
+          URL=${{ needs.infra.outputs.webAppUrl }}
+          sleep 30
+          curl -fsS --retry 6 --retry-delay 10 --retry-all-errors $URL/health
+          ID=$(curl -fsS -X POST $URL/api/users -H 'Content-Type: application/json' \
+                -d '{"name":"CI Test","email":"ci@test.com"}' | jq -r .Id)
+          curl -fsS -X PUT $URL/api/users/$ID -H 'Content-Type: application/json' \
+                -d '{"name":"CI Updated","email":"ci@test.com"}'
+          curl -fsS $URL/api/users | jq -e ".[] | select(.Id==$ID and .Name==\"CI Updated\")"
+          curl -fsS -X DELETE $URL/api/users/$ID
