@@ -1,4 +1,5 @@
 param location string = resourceGroup().location
+param sqlLocation string = location
 param prefix string = 'azan'
 param sqlAdminLogin string = 'sqladminuser'
 @secure()
@@ -12,7 +13,7 @@ var webAppName = '${prefix}-web-${suffix}'
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: sqlServerName
-  location: location
+  location: sqlLocation
   properties: {
     administratorLogin: sqlAdminLogin
     administratorLoginPassword: sqlAdminPassword
@@ -23,7 +24,7 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
 resource sqlDb 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   parent: sqlServer
   name: dbName
-  location: location
+  location: sqlLocation
   sku: { name: 'Basic', tier: 'Basic' }
 }
 
